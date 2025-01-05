@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <title>Zig Chat Game</title>
+   <style>
+       canvas { 
+           border: 1px solid #000;
+           margin: 20px;
+       }
+   </style>
+</head>
+<body>
+   <canvas id="canvas" width="320" height="420"></canvas>
+   <script>
+       const canvas = document.getElementById('canvas');
+       const ctx = canvas.getContext('2d');
+       let wasmInstance = null;
+
+       const wasmEnv = {
+           clearScreen: () => {
+               ctx.clearRect(0, 0, canvas.width, canvas.height);
+           },
+           drawRect: (x, y, width, height, r, g, b) => {
+               ctx.fillStyle = `rgb(${r},${g},${b})`;
+               ctx.fillRect(x, y, width, height);
+           },
+           drawText: (x, y, ptr, len) => {
+               const bytes = new Uint8Array(wasmInstance.exports.memory.buffer, ptr, len);
+               const text = new TextDecoder().decode(bytes);
+               ctx.fillStyle = 'black';
+               ctx.font = '16px Arial';
+               ctx.fillText(text, x, y);
+           }
+       };
+
+       async function init() {
+           const response = await fetch('chat.wasm');
+           const bytes = await response.arrayBuffer();
+           const obj = await WebAssembly.instantiate(bytes, { env: wasmEnv });
+           wasmInstance = obj.instance;
+           wasmInstance.exports.init();
+       }
+
+       document.addEventListener('keydown', (event) => {
+           if (!wasmInstance) return;
+           
+           if (event.key === 'Enter') {
+               wasmInstance.exports.handleEnter();
+           } else if (event.key === 'Backspace') {
+               wasmInstance.exports.handleBackspace();
+           } else if (event.key.length === 1) {
+               const encoder = new TextEncoder();
+               const msgBytes = encoder.encode(event.key);
+               const ptr = 1024;
+               const memoryBuffer = new Uint8Array(wasmInstance.exports.memory.buffer);
+               memoryBuffer.set(msgBytes, ptr);
+               wasmInstance.exports.handleInput(ptr, msgBytes.length);
+           }
+       });
+
+       canvas.addEventListener('wheel', (event) => {
+        if (!wasmInstance) return;
+        
+        // Normalize wheel delta across browsers
+        const delta = event.deltaY || event.detail || event.wheelDelta;
+        
+        // Pass scroll amount to Zig (positive for scroll down, negative for up)
+        wasmInstance.exports.handleScroll(delta / 100);
+        
+        // Prevent default scrolling of the page
+        event.preventDefault();
+	});
+       init();
+   </script>
+</body>
+</html>
