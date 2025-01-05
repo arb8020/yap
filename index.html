@@ -70,7 +70,7 @@
        canvas.addEventListener('wheel', (event) => {
            if (!wasmInstance) return;
            const delta = event.deltaY || event.detail || event.wheelDelta;
-           wasmInstance.exports.handleScroll(delta / 100);
+           wasmInstance.exports.handleScroll(delta / 5);
            event.preventDefault();
        });
 
