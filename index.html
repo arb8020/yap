@@ -15,6 +15,7 @@
        const canvas = document.getElementById('canvas');
        const ctx = canvas.getContext('2d');
        let wasmInstance = null;
+       let mouseY = 0;
 
        const wasmEnv = {
            clearScreen: () => {
@@ -30,6 +31,9 @@
                ctx.fillStyle = 'black';
                ctx.font = '16px Arial';
                ctx.fillText(text, x, y);
+           },
+           getMouseY: () => {
+               return mouseY;
            }
        };
 
@@ -40,6 +44,11 @@
            wasmInstance = obj.instance;
            wasmInstance.exports.init();
        }
+
+       canvas.addEventListener('mousemove', (event) => {
+           const rect = canvas.getBoundingClientRect();
+           mouseY = event.clientY - rect.top;
+       });
 
        document.addEventListener('keydown', (event) => {
            if (!wasmInstance) return;
@@ -59,17 +68,12 @@
        });
 
        canvas.addEventListener('wheel', (event) => {
-        if (!wasmInstance) return;
-        
-        // Normalize wheel delta across browsers
-        const delta = event.deltaY || event.detail || event.wheelDelta;
-        
-        // Pass scroll amount to Zig (positive for scroll down, negative for up)
-        wasmInstance.exports.handleScroll(delta / 100);
-        
-        // Prevent default scrolling of the page
-        event.preventDefault();
-	});
+           if (!wasmInstance) return;
+           const delta = event.deltaY || event.detail || event.wheelDelta;
+           wasmInstance.exports.handleScroll(delta / 100);
+           event.preventDefault();
+       });
+
        init();
    </script>
 </body>
